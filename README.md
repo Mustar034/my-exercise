@@ -1,8 +1,14 @@
-# my-exercise
-程序设计课作业提交
-- 第一次作业提交为ex01
-- 第一次实验提交lab01
-- 第二次作业内容提交为ex02
-- 第三次作业内容提交为ex03
-- 第二次实验全部内容在lab02
-- 第三次实验全部内容在lab03
+# 🛠️ ESP32 Arduino Homework
+> Course assignments repository | Based on ESP32 & Arduino IDE
+
+## 📦 File Structure
+ex01 ~ ex09: Separated by assignment times
+
+## ⚙️ Environment
+- Chip: ESP32
+- Editor & Compiler: Arduino IDE
+- Language: C/C++ (Arduino Framework)
+
+## 🚀 Quick Start
+git clone https://github.com/Mustar034/my-exercise.git
+Open any exXX/.ino in Arduino IDE, select ESP32 board and upload.
