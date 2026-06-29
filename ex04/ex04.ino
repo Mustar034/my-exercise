@@ -1,7 +1,7 @@
 // 硬件引脚定义
 #define TOUCH_PIN     4    // 触摸引脚T4
 #define LED_PIN       2    // ESP32板载LED引脚
-#define TOUCH_THRESH  20   // 触摸阈值，可根据开发板微调
+#define TOUCH_THRESH  400   // 触摸阈值，可根据开发板微调
 #define DEBOUNCE_DELAY 300 // 软件防抖300ms，防止手抖多次触发
 
 bool ledState = false;       // LED自锁状态变量

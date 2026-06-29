@@ -1,17 +1,23 @@
 // ========== 硬件与参数定义 ==========
-#define TOUCH_PIN     4     // 触摸引脚 T4
+#define TOUCH_PIN     4     // 触摸引脚 T0(GPIO4)
 #define LED_PIN       2     // ESP32板载LED
-#define TOUCH_THRESH  20    // 触摸阈值，可微调
+#define TOUCH_THRESH  500    // 触摸阈值，可微调
 #define DEBOUNCE_MS   300   // 触摸防抖时间，防止手抖误触
 
-// PWM呼吸灯基础参数（来自实验3）
+// PWM呼吸灯基础参数
 const int pwmFreq = 5000;
-const int pwmRes  = 8; // 0~255亮度范围
+const int pwmRes  = 8;      // 8位分辨率 亮度0~255
 
-// 档位控制变量
-int speedLevel = 1;    // 初始档位1（慢速）
-const int maxLevel = 3;// 总共有3个速度档位
+// 档位间隔：数值越小呼吸速度越快（对应3档：慢/中/快）
+const int speedIntervals[3] = {15, 7, 3};
+int speedLevel = 1;         // 初始档位1（慢速）
+const int maxLevel = 3;     // 总共有3个速度档位
 unsigned long lastTouchTime = 0; // 触摸防抖计时
+
+// 呼吸灯非阻塞变量
+int dutyCycle = 0;
+int direction = 1;          // 1增亮 -1变暗
+unsigned long previousMillis = 0;
 
 // ========== 触摸中断回调函数 ==========
 void touchTrigger() {
@@ -24,41 +30,52 @@ void touchTrigger() {
     if (speedLevel > maxLevel) {
       speedLevel = 1;
     }
-    Serial.print("切换至档位：");
-    Serial.println(speedLevel);
+    // 中断内禁止大量串口输出，标记标志放loop打印
   }
 }
 
 // ========== 初始化 ==========
 void setup() {
   Serial.begin(115200);
-  // PWM绑定LED引脚（实验3标准用法）
+  // PWM绑定LED引脚
   ledcAttach(LED_PIN, pwmFreq, pwmRes);
-  // 绑定触摸中断
+  ledcWrite(LED_PIN, 0);
+  // 绑定触摸中断，低于阈值触发中断
   touchAttachInterrupt(TOUCH_PIN, touchTrigger, TOUCH_THRESH);
-  Serial.println("多档位触摸调速呼吸灯初始化完成");
+  
+  Serial.println("===== 多档位触摸调速呼吸灯初始化完成 =====");
   Serial.println("档位1=慢速 | 档位2=中速 | 档位3=快速");
+  Serial.print("当前档位：");
+  Serial.println(speedLevel);
 }
 
-// ========== 主循环：持续呼吸渐变 ==========
+// ========== 主循环：非阻塞持续呼吸渐变 ==========
 void loop() {
-  // 根据当前档位设置渐变步长，步长越大呼吸越快
-  int step;
-  switch(speedLevel) {
-    case 1: step = 1; break; // 慢
-    case 2: step = 3; break; // 中
-    case 3: step = 6; break; // 快
-    default: step = 1;
+  // 读取当前档位对应的刷新间隔
+  int interval = speedIntervals[speedLevel - 1];
+  unsigned long currentMillis = millis();
+
+  // 非阻塞PWM亮度更新
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    dutyCycle += direction;
+
+    // 亮度边界翻转渐变方向
+    if (dutyCycle >= 255) {
+      dutyCycle = 255;
+      direction = -1;
+    } else if (dutyCycle <= 0) {
+      dutyCycle = 0;
+      direction = 1;
+    }
+    ledcWrite(LED_PIN, dutyCycle);
   }
 
-  // 渐变变亮
-  for(int duty = 0; duty <= 255; duty += step) {
-    ledcWrite(LED_PIN, duty);
-    delay(10);
-  }
-  // 渐变变暗
-  for(int duty = 255; duty >= 0; duty -= step) {
-    ledcWrite(LED_PIN, duty);
-    delay(10);
+  // 检测档位是否变更，打印串口信息
+  static int lastPrintLevel = speedLevel;
+  if (speedLevel != lastPrintLevel) {
+    lastPrintLevel = speedLevel;
+    Serial.print("触摸触发，切换至档位：");
+    Serial.println(speedLevel);
   }
 }
